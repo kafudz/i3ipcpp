@@ -262,8 +262,11 @@ std::string  get_socketpath() {
 		while (fgets(buf, sizeof(buf), in) != nullptr) {
 			str_buf << buf;
 		}
-		pclose(in);
-		str = str_buf;
+    int ret = WEXITSTATUS(pclose(in));
+    str = str_buf;
+    if (ret != 0) {
+      throw ipc_error("i3 --get-socketpath failed with exit code " + std::to_string(ret) + " and output '" + str + "'");
+    }
 	}
 	if (!str.empty() && str.back() == '\n') {
 		str.pop_back();

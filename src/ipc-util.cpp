@@ -65,7 +65,7 @@ int32_t  i3_connect(const std::string&  socket_path) {
 	addr.sun_family = AF_LOCAL;
 	strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
 	if (connect(sockfd, (const struct sockaddr*)&addr, sizeof(struct sockaddr_un)) < 0) {
-		throw errno_error("Failed to connect to i3");
+		throw errno_error("Failed to connect to i3 at '" + (socket_path.empty() ? "<empty>" : socket_path) + "'");
 	}
 
 	return sockfd;
