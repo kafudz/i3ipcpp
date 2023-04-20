@@ -28,14 +28,14 @@ extern std::vector<std::ostream*>  g_logging_err_outs;
  */
 template<typename T>
 inline void  log(const T&  data, const bool  err=false) {
-	for (auto  out : (err ? g_logging_err_outs : g_logging_outs)) {
-		*out << data << std::endl;
-	}
+  for (auto  out : (err ? g_logging_err_outs : g_logging_outs)) {
+    *out << data << std::endl;
+  }
 }
 
 template<>
 inline void  log(const auss_t&  data, const bool  err) {
-	log(data.to_string());
+  log(data.to_string());
 }
 
 }
@@ -46,7 +46,7 @@ inline void  log(const auss_t&  data, const bool  err) {
  * Internal macro used in I3IPC_*-logging macros
  */
 #define I3IPC_LOG(T, ERR) \
-	::i3ipc::log((T), (ERR));
+  ::i3ipc::log((T), (ERR));
 
 /**
  * Put information message to log

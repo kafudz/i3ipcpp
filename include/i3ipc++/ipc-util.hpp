@@ -12,7 +12,7 @@
 namespace i3ipc {
 
 /** @defgroup i3ipc_util i3 IPC internal utilities
- * Stuff for internal usage in I3Connection 
+ * Stuff for internal usage in I3Connection
  * @{
  */
 
@@ -22,10 +22,10 @@ namespace i3ipc {
  * i3 IPC header
  */
 struct header_t {
-	/* 6 = strlen(I3_IPC_MAGIC) */
-	char magic[6]; ///< Magic string @see I3_IPC_MAGIC
-	uint32_t size; ///< Size of payload
-	uint32_t type; ///< Message type
+  /* 6 = strlen(I3_IPC_MAGIC) */
+  char magic[6]; ///< Magic string @see I3_IPC_MAGIC
+  uint32_t size; ///< Size of payload
+  uint32_t type; ///< Message type
 }  __attribute__ ((packed));
 
 
@@ -54,8 +54,8 @@ class invalid_reply_payload_error : public ipc_error { using ipc_error::ipc_erro
  */
 class errno_error : public ipc_error {
 public:
-	errno_error();
-	errno_error(const std::string&  msg);
+  errno_error();
+  errno_error(const std::string&  msg);
 };
 
 
@@ -63,14 +63,14 @@ public:
  * @brief Messages (requests), that can be sended from the client
  */
 enum class ClientMessageType : uint32_t {
-	COMMAND = 0,
-	GET_WORKSPACES = 1,
-	SUBSCRIBE = 2,
-	GET_OUTPUTS = 3,
-	GET_TREE = 4,
-	GET_MARKS = 5,
-	GET_BAR_CONFIG = 6,
-	GET_VERSION = 7,
+  COMMAND = 0,
+  GET_WORKSPACES = 1,
+  SUBSCRIBE = 2,
+  GET_OUTPUTS = 3,
+  GET_TREE = 4,
+  GET_MARKS = 5,
+  GET_BAR_CONFIG = 6,
+  GET_VERSION = 7,
 };
 
 
@@ -78,14 +78,14 @@ enum class ClientMessageType : uint32_t {
  * @brief Replies, that can be sended from the i3 to the client
  */
 enum class ReplyType : uint32_t {
-	COMMAND = 0,
-	WORKSPACES = 1,
-	SUBSCRIBE = 2,
-	OUTPUTS = 3,
-	TREE = 4,
-	MARKS = 5,
-	BAR_CONFIG = 6,
-	VERSION = 7,
+  COMMAND = 0,
+  WORKSPACES = 1,
+  SUBSCRIBE = 2,
+  OUTPUTS = 3,
+  TREE = 4,
+  MARKS = 5,
+  BAR_CONFIG = 6,
+  VERSION = 7,
 };
 
 
@@ -93,30 +93,30 @@ enum class ReplyType : uint32_t {
  * @brief i3 IPC message buffer
  */
 struct buf_t {
-	uint32_t  size; ///< @brief Size of whole buffer
-	uint8_t*  data; ///< @brief Pointer to the message
+  uint32_t  size; ///< @brief Size of whole buffer
+  uint8_t*  data; ///< @brief Pointer to the message
 
-	/**
-	 * @brief i3 IPC message header
-	 *
-	 * Pointing on the begining
-	 */
-	header_t*  header;
+  /**
+   * @brief i3 IPC message header
+   *
+   * Pointing on the begining
+   */
+  header_t*  header;
 
-	/**
-	 * @brief Message payload
-	 *
-	 * Pointing on the byte after the header
-	 */
-	char*  payload;
+  /**
+   * @brief Message payload
+   *
+   * Pointing on the byte after the header
+   */
+  char*  payload;
 
-	buf_t(uint32_t  payload_size);
-	~buf_t();
+  buf_t(uint32_t  payload_size);
+  ~buf_t();
 
-	/**
-	 * @brief Resize payload to the payload_size in the header
-	 */
-	void  realloc_payload_to_header();
+  /**
+   * @brief Resize payload to the payload_size in the header
+   */
+  void  realloc_payload_to_header();
 };
 
 /**
