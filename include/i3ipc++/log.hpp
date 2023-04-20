@@ -1,8 +1,8 @@
 #pragma once
 
+#include <auss.hpp>
 #include <ostream>
 #include <vector>
-#include <auss.hpp>
 
 /**
  * @addtogroup logging Logging
@@ -14,39 +14,38 @@ namespace i3ipc {
 /**
  * @brief Common logging outputs
  */
-extern std::vector<std::ostream*>  g_logging_outs;
+extern std::vector<std::ostream*> g_logging_outs;
 
 /**
  * @brief Logging outputs for error messages
  */
-extern std::vector<std::ostream*>  g_logging_err_outs;
+extern std::vector<std::ostream*> g_logging_err_outs;
 
 /**
  * @brief Put to a logging outputs some dtat
  * @param  data  data, that you want to put to the logging outputs
  * @param  err  is your information is error report or something that must be putted to the error logging outputs
  */
-template<typename T>
-inline void  log(const T&  data, const bool  err=false) {
-  for (auto  out : (err ? g_logging_err_outs : g_logging_outs)) {
+template <typename T>
+inline void log(const T& data, const bool err = false) {
+  for (auto out : (err ? g_logging_err_outs : g_logging_outs)) {
     *out << data << std::endl;
   }
 }
 
-template<>
-inline void  log(const auss_t&  data, const bool  err) {
+template <>
+inline void log(const auss_t& data, const bool err) {
   log(data.to_string());
 }
 
-}
+} // namespace i3ipc
 
 #ifdef WITH_LOGGING
 
 /**
  * Internal macro used in I3IPC_*-logging macros
  */
-#define I3IPC_LOG(T, ERR) \
-  ::i3ipc::log((T), (ERR));
+#define I3IPC_LOG(T, ERR) ::i3ipc::log((T), (ERR));
 
 /**
  * Put information message to log

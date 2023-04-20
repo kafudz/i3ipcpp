@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 // extern "C" {
 // #include <i3/ipc.h>
@@ -26,38 +26,44 @@ struct header_t {
   char magic[6]; ///< Magic string @see I3_IPC_MAGIC
   uint32_t size; ///< Size of payload
   uint32_t type; ///< Message type
-}  __attribute__ ((packed));
-
+} __attribute__((packed));
 
 /**
  * @brief Base class of i3 IPC errors
  */
-class ipc_error : public std::runtime_error { using std::runtime_error::runtime_error; };
+class ipc_error : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 /**
  * @brief Something wrong in message header (wrong magic number, message type etc.)
  */
-class invalid_header_error : public ipc_error { using ipc_error::ipc_error; };
+class invalid_header_error : public ipc_error {
+  using ipc_error::ipc_error;
+};
 
 /**
  * @brief Socket return EOF, but expected a data
  */
-class eof_error : public ipc_error { using ipc_error::ipc_error; };
+class eof_error : public ipc_error {
+  using ipc_error::ipc_error;
+};
 
 /**
  * @brief If something wrong in a payload of i3's reply
  */
-class invalid_reply_payload_error : public ipc_error { using ipc_error::ipc_error; };
+class invalid_reply_payload_error : public ipc_error {
+  using ipc_error::ipc_error;
+};
 
 /**
  * @brief If any error occured, while using C-functions
  */
 class errno_error : public ipc_error {
-public:
+ public:
   errno_error();
-  errno_error(const std::string&  msg);
+  errno_error(const std::string& msg);
 };
-
 
 /**
  * @brief Messages (requests), that can be sended from the client
@@ -73,7 +79,6 @@ enum class ClientMessageType : uint32_t {
   GET_VERSION = 7,
 };
 
-
 /**
  * @brief Replies, that can be sended from the i3 to the client
  */
@@ -88,35 +93,34 @@ enum class ReplyType : uint32_t {
   VERSION = 7,
 };
 
-
 /**
  * @brief i3 IPC message buffer
  */
 struct buf_t {
-  uint32_t  size; ///< @brief Size of whole buffer
-  uint8_t*  data; ///< @brief Pointer to the message
+  uint32_t size; ///< @brief Size of whole buffer
+  uint8_t* data; ///< @brief Pointer to the message
 
   /**
    * @brief i3 IPC message header
    *
    * Pointing on the begining
    */
-  header_t*  header;
+  header_t* header;
 
   /**
    * @brief Message payload
    *
    * Pointing on the byte after the header
    */
-  char*  payload;
+  char* payload;
 
-  buf_t(uint32_t  payload_size);
+  buf_t(uint32_t payload_size);
   ~buf_t();
 
   /**
    * @brief Resize payload to the payload_size in the header
    */
-  void  realloc_payload_to_header();
+  void realloc_payload_to_header();
 };
 
 /**
@@ -124,32 +128,32 @@ struct buf_t {
  * @param  socket_path a socket path
  * @return             socket id
  */
-int32_t  i3_connect(const std::string&  socket_path);
+int32_t i3_connect(const std::string& socket_path);
 
 /**
  * @brief Close the connection
  * @param  sockfd socket
  */
-void  i3_disconnect(const int32_t  sockfd);
+void i3_disconnect(const int32_t sockfd);
 
 /**
  * @brief Send message to the socket
  * @param  sockfd a socket
  * @param  buff   a message
  */
-void   i3_send(const int32_t  sockfd, const buf_t&  buff);
+void i3_send(const int32_t sockfd, const buf_t& buff);
 
 /**
  * @brief Recive a message from i3
  * @param  sockfd  a socket
  * @return  a buffer of the message
  */
-std::shared_ptr<buf_t>   i3_recv(const int32_t  sockfd);
+std::shared_ptr<buf_t> i3_recv(const int32_t sockfd);
 
 /**
  * @brief Pack a buffer of message
  */
-std::shared_ptr<buf_t>  i3_pack(const ClientMessageType  type, const std::string&  payload);
+std::shared_ptr<buf_t> i3_pack(const ClientMessageType type, const std::string& payload);
 
 /**
  * @brief Pack, send a message and receiv a reply
@@ -160,10 +164,11 @@ std::shared_ptr<buf_t>  i3_pack(const ClientMessageType  type, const std::string
  * auto  reply = i3_recv(sockfd);
  * @endcode
  */
-std::shared_ptr<buf_t>  i3_msg(const int32_t  sockfd, const ClientMessageType  type, const std::string&  payload = std::string());
+std::shared_ptr<buf_t> i3_msg(
+    const int32_t sockfd, const ClientMessageType type, const std::string& payload = std::string());
 
 /**
  * @}
  */
 
-}
+} // namespace i3ipc
