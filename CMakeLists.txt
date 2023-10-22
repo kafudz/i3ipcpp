@@ -1,6 +1,6 @@
 # Project setup
 
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5.0 FATAL_ERROR)
 project(i3ipc++ CXX)
 
 option(WITH_LOGGING "Build with log support" OFF)
