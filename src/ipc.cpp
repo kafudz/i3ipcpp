@@ -1,6 +1,7 @@
 #include "i3ipc++/ipc.hpp"
 
 #include <json/json.h>
+#include <sys/wait.h>
 
 #include <auss.hpp>
 #include <cstdio>
