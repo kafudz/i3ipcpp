@@ -22,7 +22,7 @@ extern std::vector<std::ostream*> g_logging_outs;
 extern std::vector<std::ostream*> g_logging_err_outs;
 
 /**
- * @brief Put to a logging outputs some dtat
+ * @brief Put to a logging outputs some data
  * @param  data  data, that you want to put to the logging outputs
  * @param  err  is your information is error report or something that must be putted to the error logging outputs
  */
@@ -35,7 +35,7 @@ inline void log(const T& data, const bool err = false) {
 
 template <>
 inline void log(const auss_t& data, const bool err) {
-  log(data.to_string());
+  log(data.to_string(), err);
 }
 
 } // namespace i3ipc
@@ -87,7 +87,6 @@ inline void log(const auss_t& data, const bool err) {
 #define I3IPC_INFO(T)
 #define I3IPC_ERR(T)
 #define I3IPC_WARN(T)
-#define I3IPC_DEBUG(T)
 #define I3IPC_DEBUG(T)
 #endif
 

@@ -1,3 +1,20 @@
+0.4.1
+	+ container_t::floating_nodes: floating containers are now parsed from the TREE reply
+	+ I3SOCK environment variable is honored by get_socketpath()
+	+ i3ipc::ipc_error and the other exceptions are available after including <i3ipc++/ipc.hpp>
+
+	~ Sockets are created with CLOEXEC, writes use MSG_NOSIGNAL (no SIGPIPE when i3 goes away)
+	~ A reply with an unreasonably large payload is rejected; a too long socket path is reported instead of being truncated
+	~ container_t::current_border_width is signed (i3 reports -1)
+	~ connection is not copyable; no more <i3/ipc.h> dependency in the public header
+
+	* Fixed: layout_raw was filled with the border; bar position "bottom" was never recognized
+	* Fixed: send_command() considered only the first result of a command line
+	* Fixed: event socket fd 0 handling, double close of the event socket, descriptor leak on failed connect
+	* Fixed: unknown window events were passed to the handler with an uninitialized type
+	* Fixed: bar config colors with a malformed value threw an unrelated exception
+	* Fixed: subscribe() remembered refused subscriptions
+
 0.4
 	+ Added support of GET_BARCONFIG and barconfig_update event and examples for them
 	+ Added getters form main and event sockets

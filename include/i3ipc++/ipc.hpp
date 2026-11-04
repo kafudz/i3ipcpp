@@ -8,9 +8,7 @@
 #include <string>
 #include <vector>
 
-extern "C" {
-#include <i3/ipc.h>
-}
+#include "ipc-util.hpp" // Exception types (ipc_error and others) are part of the public API
 
 /**
  * @addtogroup i3ipc i3 IPC C++ binding
@@ -20,7 +18,10 @@ namespace i3ipc {
 
 /**
  * Get path to the i3 IPC socket
+ *
+ * Uses the I3SOCK environment variable if it is set, otherwise asks i3 via `i3 --get-socketpath`
  * @return Path to a socket
+ * @throws ipc_error if the path could not be determined
  */
 std::string get_socketpath();
 
@@ -76,7 +77,7 @@ enum EventType {
   ET_OUTPUT = (1 << 1),           ///< Output event
   ET_MODE = (1 << 2),             ///< Output mode event
   ET_WINDOW = (1 << 3),           ///< Window event
-  ET_BARCONFIG_UPDATE = (1 << 4), ///< Bar config update event @attention Yet is not implemented as signal in connection
+  ET_BARCONFIG_UPDATE = (1 << 4), ///< Bar config update event
   ET_BINDING = (1 << 5),          ///< Binding event
 };
 
@@ -174,8 +175,8 @@ struct container_t {
   std::string type;       ///< Type of this container
   BorderStyle border;     ///< A style of the container's border
   std::string border_raw; ///< A "border" field of TREE reply. NOT empty only if border equals BorderStyle::UNKNOWN
-  uint32_t current_border_width; ///< Number of pixels of the border width
-  ContainerLayout layout;        ///< A type of the container's layout
+  int32_t current_border_width; ///< Number of pixels of the border width. i3 reports -1 for containers without a window
+  ContainerLayout layout;       ///< A type of the container's layout
   std::string layout_raw; ///< A "layout" field of TREE reply. NOT empty only if layout equals ContainerLayout::UNKNOWN
   float percent; ///< The percentage which this container takes in its parent. A value of < 0 means that the percent
                  ///< property does not make sense for this container, for example for the root container.
@@ -190,7 +191,8 @@ struct container_t {
   bool urgent;
   bool focused;
 
-  std::list<std::shared_ptr<container_t>> nodes;
+  std::list<std::shared_ptr<container_t>> nodes;          ///< Tiling children of the container
+  std::list<std::shared_ptr<container_t>> floating_nodes; ///< Floating children of the container
 };
 
 /**
@@ -264,6 +266,10 @@ class connection {
   connection(const std::string& socket_path = get_socketpath());
   ~connection();
 
+  // A connection owns its sockets and its default event handler refers to `this`, so it must not be copied
+  connection(const connection&) = delete;
+  connection& operator=(const connection&) = delete;
+
   /**
    * Send a command to i3
    * @param  command command
@@ -317,7 +323,7 @@ class connection {
    * Example:
    * @code{.cpp}
    * connection  conn;
-   * conn.subscribe(i3ipc::ipc::ET_WORKSPACE | i3ipc::ipc::ET_WINDOW);
+   * conn.subscribe(i3ipc::ET_WORKSPACE | i3ipc::ET_WINDOW);
    * @endcode
    *
    * @param  events event type (EventType enum)
@@ -326,8 +332,11 @@ class connection {
   bool subscribe(const int32_t events);
 
   /**
-   * Handle an event from i3
-   * @note Used only in main()
+   * Wait for an event from i3 and handle it
+   *
+   * Blocks until an event is received (connecting the event socket first, if needed) and passes it to `on_event`
+   * @return false if the event was passed to `on_event`, true if it was received, but there is no `on_event` set
+   * @throws eof_error if i3 closed the connection
    */
   bool handle_event();
 

@@ -4,7 +4,9 @@
 #include <sys/wait.h>
 
 #include <auss.hpp>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -43,8 +45,9 @@ std::vector<std::ostream*> g_logging_err_outs = {
 #define IPC_JSON_ASSERT_TYPE_ARRAY(OBJ, OBJ_DESCR) IPC_JSON_ASSERT_TYPE(OBJ, OBJ_DESCR, isArray, "an array")
 #define IPC_JSON_ASSERT_TYPE_BOOL(OBJ, OBJ_DESCR) IPC_JSON_ASSERT_TYPE(OBJ, OBJ_DESCR, isBool, "a bool")
 #define IPC_JSON_ASSERT_TYPE_INT(OBJ, OBJ_DESCR) IPC_JSON_ASSERT_TYPE(OBJ, OBJ_DESCR, isInt, "an integer")
+#define IPC_JSON_ASSERT_TYPE_STRING(OBJ, OBJ_DESCR) IPC_JSON_ASSERT_TYPE(OBJ, OBJ_DESCR, isString, "a string")
 
-inline rect_t parse_rect_from_json(const Json::Value& value) {
+static rect_t parse_rect_from_json(const Json::Value& value) {
   rect_t r{};
   r.x = value["x"].asInt64();
   r.y = value["y"].asInt64();
@@ -57,8 +60,8 @@ static std::shared_ptr<container_t> parse_container_from_json(const Json::Value&
 #define i3IPC_TYPE_STR "PARSE CONTAINER FROM JSON"
   if (o.isNull())
     return std::shared_ptr<container_t>();
-  std::shared_ptr<container_t> container(new container_t());
   IPC_JSON_ASSERT_TYPE_OBJECT(o, "o")
+  std::shared_ptr<container_t> container(new container_t());
 
   container->id = o["id"].asUInt64();
   container->xwindow_id = o["window"].asUInt64();
@@ -106,17 +109,25 @@ static std::shared_ptr<container_t> parse_container_from_json(const Json::Value&
   } else if (layout == "output") {
     container->layout = ContainerLayout::OUTPUT;
   } else {
-    container->layout_raw = border;
+    container->layout_raw = layout;
     I3IPC_WARN("Got a unknown \"layout\" property: \""
                << layout
                << "\". Perhaps its neccessary to update i3ipc++. If you are using latest, note maintainer about this")
   }
 
-  Json::Value nodes = o["nodes"];
+  const Json::Value& nodes = o["nodes"];
   if (!nodes.isNull()) {
     IPC_JSON_ASSERT_TYPE_ARRAY(nodes, "nodes")
     for (Json::ArrayIndex i = 0; i < nodes.size(); i++) {
       container->nodes.push_back(parse_container_from_json(nodes[i]));
+    }
+  }
+
+  const Json::Value& floating_nodes = o["floating_nodes"];
+  if (!floating_nodes.isNull()) {
+    IPC_JSON_ASSERT_TYPE_ARRAY(floating_nodes, "floating_nodes")
+    for (Json::ArrayIndex i = 0; i < floating_nodes.size(); i++) {
+      container->floating_nodes.push_back(parse_container_from_json(floating_nodes[i]));
     }
   }
 
@@ -127,38 +138,28 @@ static std::shared_ptr<container_t> parse_container_from_json(const Json::Value&
 static std::shared_ptr<workspace_t> parse_workspace_from_json(const Json::Value& value) {
   if (value.isNull())
     return std::shared_ptr<workspace_t>();
-  Json::Value num = value["num"];
-  Json::Value name = value["name"];
-  Json::Value visible = value["visible"];
-  Json::Value focused = value["focused"];
-  Json::Value urgent = value["urgent"];
-  Json::Value rect = value["rect"];
-  Json::Value output = value["output"];
 
   std::shared_ptr<workspace_t> p(new workspace_t());
-  p->num = num.asInt();
-  p->name = name.asString();
-  p->visible = visible.asBool();
-  p->focused = focused.asBool();
-  p->urgent = urgent.asBool();
-  p->rect = parse_rect_from_json(rect);
-  p->output = output.asString();
+  p->num = value["num"].asInt();
+  p->name = value["name"].asString();
+  p->visible = value["visible"].asBool();
+  p->focused = value["focused"].asBool();
+  p->urgent = value["urgent"].asBool();
+  p->rect = parse_rect_from_json(value["rect"]);
+  p->output = value["output"].asString();
   return p;
 }
 
 static std::shared_ptr<output_t> parse_output_from_json(const Json::Value& value) {
   if (value.isNull())
     return std::shared_ptr<output_t>();
-  Json::Value name = value["name"];
-  Json::Value active = value["active"];
-  Json::Value current_workspace = value["current_workspace"];
-  Json::Value rect = value["rect"];
+  const Json::Value& current_workspace = value["current_workspace"];
 
   std::shared_ptr<output_t> p(new output_t());
-  p->name = name.asString();
-  p->active = active.asBool();
+  p->name = value["name"].asString();
+  p->active = value["active"].asBool();
   p->current_workspace = (current_workspace.isNull() ? std::string() : current_workspace.asString());
-  p->rect = parse_rect_from_json(rect);
+  p->rect = parse_rect_from_json(value["rect"]);
   return p;
 }
 
@@ -173,7 +174,7 @@ static std::shared_ptr<binding_t> parse_binding_from_json(const Json::Value& val
   b->symbol = value["symbol"].asString();
   b->input_code = value["input_code"].asInt();
 
-  Json::Value input_type = value["input_type"].asString();
+  const std::string input_type = value["input_type"].asString();
   if (input_type == "keyboard") {
     b->input_type = InputType::KEYBOARD;
   } else if (input_type == "mouse") {
@@ -182,7 +183,7 @@ static std::shared_ptr<binding_t> parse_binding_from_json(const Json::Value& val
     b->input_type = InputType::UNKNOWN;
   }
 
-  Json::Value esm_arr = value["event_state_mask"];
+  const Json::Value& esm_arr = value["event_state_mask"];
   IPC_JSON_ASSERT_TYPE_ARRAY(esm_arr, "event_state_mask")
 
   b->event_state_mask.resize(esm_arr.size());
@@ -198,12 +199,10 @@ static std::shared_ptr<binding_t> parse_binding_from_json(const Json::Value& val
 static std::shared_ptr<mode_t> parse_mode_from_json(const Json::Value& value) {
   if (value.isNull())
     return std::shared_ptr<mode_t>();
-  Json::Value change = value["change"];
-  Json::Value pango_markup = value["pango_markup"];
 
   std::shared_ptr<mode_t> p(new mode_t());
-  p->change = change.asString();
-  p->pango_markup = pango_markup.asBool();
+  p->change = value["change"].asString();
+  p->pango_markup = value["pango_markup"].asBool();
   return p;
 }
 
@@ -236,7 +235,7 @@ static std::shared_ptr<bar_config_t> parse_bar_config_from_json(const Json::Valu
   std::string position = value["position"].asString();
   if (position == "top") {
     bc->position = Position::TOP;
-  } else if (mode == "bottom") {
+  } else if (position == "bottom") {
     bc->position = Position::BOTTOM;
   } else {
     bc->position = Position::UNKNOWN;
@@ -245,11 +244,26 @@ static std::shared_ptr<bar_config_t> parse_bar_config_from_json(const Json::Valu
                << "\". Perhaps its neccessary to update i3ipc++. If you are using latest, note maintainer about this")
   }
 
-  Json::Value colors = value["colors"];
-  IPC_JSON_ASSERT_TYPE_OBJECT(value, "colors")
-  auto colors_list = colors.getMemberNames();
-  for (auto& m : colors_list) {
-    bc->colors[m] = std::stoul(colors[m].asString().substr(1), nullptr, 16);
+  const Json::Value& colors = value["colors"];
+  if (!colors.isNull()) {
+    IPC_JSON_ASSERT_TYPE_OBJECT(colors, "colors")
+    for (const std::string& m : colors.getMemberNames()) {
+      const Json::Value& color = colors[m];
+      IPC_JSON_ASSERT_TYPE_STRING(color, "a color")
+
+      // A color is a string like "#rrggbb". Validate it instead of letting std::stoul throw an unrelated exception
+      // (or substr() fail) on a malformed value
+      const std::string color_str = color.asString();
+      const char* digits = color_str.c_str() + ((!color_str.empty() && color_str[0] == '#') ? 1 : 0);
+      char* end = nullptr;
+      errno = 0;
+      const unsigned long parsed = strtoul(digits, &end, 16);
+      if (*digits == '\0' || *end != '\0' || errno == ERANGE || parsed > 0xFFFFFFFFul) {
+        throw invalid_reply_payload_error(auss_t() << "Failed to parse reply on \"" i3IPC_TYPE_STR "\": color \"" << m
+                                                   << "\" has an invalid value \"" << color_str << '"');
+      }
+      bc->colors[m] = static_cast<uint32_t>(parsed);
+    }
   }
 
   return bc;
@@ -257,6 +271,12 @@ static std::shared_ptr<bar_config_t> parse_bar_config_from_json(const Json::Valu
 }
 
 std::string get_socketpath() {
+  // The same variable is honored by i3-msg and other i3 tools. It also allows to work without `i3` in PATH
+  const char* env_path = getenv("I3SOCK");
+  if (env_path != nullptr && env_path[0] != '\0') {
+    return env_path;
+  }
+
   std::string str;
   {
     auss_t str_buf;
@@ -269,10 +289,15 @@ std::string get_socketpath() {
     while (fgets(buf, sizeof(buf), in) != nullptr) {
       str_buf << buf;
     }
-    int ret = WEXITSTATUS(pclose(in));
+    const int status = pclose(in);
     str = str_buf;
-    if (ret != 0) {
-      throw ipc_error("i3 --get-socketpath failed with exit code " + std::to_string(ret) + " and output '" + str + "'");
+    if (status == -1) {
+      throw errno_error("Failed to wait for `i3 --get-socketpath`");
+    }
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+      const std::string reason = WIFEXITED(status) ? "exit code " + std::to_string(WEXITSTATUS(status))
+                                                   : "signal " + std::to_string(WTERMSIG(status));
+      throw ipc_error("i3 --get-socketpath failed with " + reason + " and output '" + str + "'");
     }
   }
   if (!str.empty() && str.back() == '\n') {
@@ -337,6 +362,10 @@ connection::connection(const std::string& socket_path)
         Json::Value root;
         IPC_JSON_READ(root);
         std::shared_ptr<mode_t> mode_data = parse_mode_from_json(root);
+        if (!mode_data) {
+          I3IPC_ERR("Failed to parse mode_event")
+          break;
+        }
         if (on_mode_event) {
           on_mode_event(*mode_data);
         }
@@ -363,6 +392,10 @@ connection::connection(const std::string& socket_path)
           ev.type = WindowEventType::FLOATING;
         } else if (change == "urgent") {
           ev.type = WindowEventType::URGENT;
+        } else {
+          // Do not pass an event with an uninitialized type to the user
+          I3IPC_WARN("Unknown window event type " << change)
+          break;
         }
         I3IPC_DEBUG("WINDOW " << change)
 
@@ -381,6 +414,10 @@ connection::connection(const std::string& socket_path)
         Json::Value root;
         IPC_JSON_READ(root);
         std::shared_ptr<bar_config_t> barconf = parse_bar_config_from_json(root);
+        if (!barconf) {
+          I3IPC_ERR("Failed to parse barconfig_update event")
+          break;
+        }
         if (on_barconfig_update_event) {
           on_barconfig_update_event(*barconf);
         }
@@ -416,12 +453,12 @@ connection::connection(const std::string& socket_path)
 }
 connection::~connection() {
   i3_disconnect(m_main_socket);
-  if (m_event_socket > 0)
+  if (m_event_socket >= 0)
     this->disconnect_event_socket();
 }
 
 void connection::connect_event_socket(const bool reconnect) {
-  if (m_event_socket > 0) {
+  if (m_event_socket >= 0) {
     if (reconnect) {
       this->disconnect_event_socket();
     } else {
@@ -430,19 +467,28 @@ void connection::connect_event_socket(const bool reconnect) {
     }
   }
   m_event_socket = i3_connect(m_socket_path);
-  this->subscribe(m_subscriptions);
+  try {
+    if (!this->subscribe(m_subscriptions)) {
+      I3IPC_ERR("i3 refused the subscription on events")
+    }
+  } catch (...) {
+    // Otherwise handle_event() would consider a not subscribed socket as a ready one and wait on it forever
+    this->disconnect_event_socket();
+    throw;
+  }
 }
 
 void connection::disconnect_event_socket() {
-  if (m_event_socket <= 0) {
+  if (m_event_socket < 0) {
     I3IPC_WARN("Trying to disconnect non-connected event socket")
     return;
   }
   i3_disconnect(m_event_socket);
+  m_event_socket = -1; // Otherwise the descriptor would be closed once more in the destructor (or reused by then)
 }
 
 bool connection::handle_event() {
-  if (m_event_socket <= 0) {
+  if (m_event_socket < 0) {
     this->connect_event_socket();
   }
 
@@ -458,7 +504,7 @@ bool connection::handle_event() {
 
 bool connection::subscribe(const int32_t events) {
 #define i3IPC_TYPE_STR "SUBSCRIBE"
-  if (m_event_socket <= 0) {
+  if (m_event_socket < 0) {
     m_subscriptions |= events;
     return true;
   }
@@ -495,9 +541,13 @@ bool connection::subscribe(const int32_t events) {
   Json::Value root;
   IPC_JSON_READ(root)
 
-  m_subscriptions |= events;
+  // Remember only what i3 has really accepted, otherwise a reconnect would repeat the failing request
+  if (!root["success"].asBool()) {
+    return false;
+  }
 
-  return root["success"].asBool();
+  m_subscriptions |= events;
+  return true;
 #undef i3IPC_TYPE_STR
 }
 
@@ -536,7 +586,7 @@ std::vector<std::shared_ptr<output_t>> connection::get_outputs() const {
 
   std::vector<std::shared_ptr<output_t>> outputs;
 
-  for (auto w : root) {
+  for (const auto& w : root) {
     outputs.push_back(parse_output_from_json(w));
   }
 
@@ -553,7 +603,7 @@ std::vector<std::shared_ptr<workspace_t>> connection::get_workspaces() const {
 
   std::vector<std::shared_ptr<workspace_t>> workspaces;
 
-  for (auto w : root) {
+  for (const auto& w : root) {
     workspaces.push_back(parse_workspace_from_json(w));
   }
 
@@ -570,7 +620,7 @@ std::vector<std::string> connection::get_bar_configs_list() const {
 
   std::vector<std::string> l;
 
-  for (auto w : root) {
+  for (const auto& w : root) {
     l.push_back(w.asString());
   }
 
@@ -593,18 +643,26 @@ bool connection::send_command(const std::string& command) const {
   Json::Value root;
   IPC_JSON_READ(root)
   IPC_JSON_ASSERT_TYPE_ARRAY(root, "root")
-  Json::Value payload = root[0];
-  IPC_JSON_ASSERT_TYPE_OBJECT(payload, " first item of root")
-
-  if (payload["success"].asBool()) {
-    return true;
-  } else {
-    Json::Value error = payload["error"];
-    if (!error.isNull()) {
-      I3IPC_ERR("Failed to execute command: " << error.asString())
-    }
-    return false;
+  if (root.empty()) {
+    throw invalid_reply_payload_error("Failed to parse reply on \"" i3IPC_TYPE_STR "\": root is expected to be non-empty");
   }
+
+  // i3 sends a result per command: "workspace 1; move left" produces two of them. The command line is successful only
+  // if all of them are
+  bool success = true;
+  for (Json::ArrayIndex i = 0; i < root.size(); i++) {
+    const Json::Value& payload = root[i];
+    IPC_JSON_ASSERT_TYPE_OBJECT(payload, "an item of root")
+
+    if (!payload["success"].asBool()) {
+      success = false;
+      const Json::Value& error = payload["error"];
+      if (!error.isNull()) {
+        I3IPC_ERR("Failed to execute command: " << error.asString())
+      }
+    }
+  }
+  return success;
 #undef i3IPC_TYPE_STR
 }
 
@@ -620,12 +678,16 @@ const version_t& get_version() {
 #define I3IPC_VERSION_MAJOR 0
 #define I3IPC_VERSION_MINOR 4
 #define I3IPC_VERSION_PATCH 0
-  static version_t v{};
-  v.human_readable = auss_t() << I3IPC_VERSION_MAJOR << '.' << I3IPC_VERSION_MINOR << '.' << I3IPC_VERSION_PATCH;
-  v.loaded_config_file_name = std::string();
-  v.major = I3IPC_VERSION_MAJOR;
-  v.minor = I3IPC_VERSION_MINOR;
-  v.patch = I3IPC_VERSION_PATCH;
+  // Initialized once (thread-safe since C++11) instead of being rewritten by every call
+  static const version_t v = []() {
+    version_t ver{};
+    ver.human_readable = auss_t() << I3IPC_VERSION_MAJOR << '.' << I3IPC_VERSION_MINOR << '.' << I3IPC_VERSION_PATCH;
+    ver.loaded_config_file_name = std::string();
+    ver.major = I3IPC_VERSION_MAJOR;
+    ver.minor = I3IPC_VERSION_MINOR;
+    ver.patch = I3IPC_VERSION_PATCH;
+    return ver;
+  }();
   return v;
 }
 

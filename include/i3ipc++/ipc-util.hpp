@@ -5,10 +5,6 @@
 #include <stdexcept>
 #include <string>
 
-// extern "C" {
-// #include <i3/ipc.h>
-// }
-
 namespace i3ipc {
 
 /** @defgroup i3ipc_util i3 IPC internal utilities
@@ -16,14 +12,12 @@ namespace i3ipc {
  * @{
  */
 
-// extern "C" {
-
 /**
  * i3 IPC header
  */
 struct header_t {
-  /* 6 = strlen(I3_IPC_MAGIC) */
-  char magic[6]; ///< Magic string @see I3_IPC_MAGIC
+  /* 6 = strlen("i3-ipc") */
+  char magic[6]; ///< Magic string, always "i3-ipc"
   uint32_t size; ///< Size of payload
   uint32_t type; ///< Message type
 } __attribute__((packed));
@@ -117,8 +111,14 @@ struct buf_t {
   buf_t(uint32_t payload_size);
   ~buf_t();
 
+  // The buffer owns raw memory, so copying it would lead to a double free
+  buf_t(const buf_t&) = delete;
+  buf_t& operator=(const buf_t&) = delete;
+
   /**
    * @brief Resize payload to the payload_size in the header
+   *
+   * Keeps the header, updates size, data, header and payload. The old payload is discarded
    */
   void realloc_payload_to_header();
 };
@@ -127,6 +127,8 @@ struct buf_t {
  * Connect to the i3 socket
  * @param  socket_path a socket path
  * @return             socket id
+ * @throws ipc_error   if the path doesn't fit into sockaddr_un
+ * @throws errno_error if the socket couldn't be created or connected
  */
 int32_t i3_connect(const std::string& socket_path);
 
@@ -147,6 +149,9 @@ void i3_send(const int32_t sockfd, const buf_t& buff);
  * @brief Recive a message from i3
  * @param  sockfd  a socket
  * @return  a buffer of the message
+ * @throws eof_error            if the peer closed the connection in the middle of a message
+ * @throws invalid_header_error if the magic is wrong or the announced payload is unreasonably large
+ * @throws errno_error          on a read error
  */
 std::shared_ptr<buf_t> i3_recv(const int32_t sockfd);
 

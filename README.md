@@ -24,8 +24,7 @@ Then just type this in your `CMakeLists.txt`:
 ...
 add_subdirectory(i3ipc++)
 
-include_directories(${I3IPCpp_INCLUDE_DIRS})
-link_directories(${I3IPCpp_LIBRARY_DIRS})
+include_directories(${I3IPCPP_INCLUDE_DIRS})
 ...
 ```
 
@@ -33,7 +32,7 @@ And then just link:
 
 ```cmake
 ...
-target_link_libraries(someapp ${I3IPCpp_LIBRARIES})
+target_link_libraries(someapp ${I3IPCPP_LIBRARIES})
 ...
 ```
 
@@ -58,18 +57,18 @@ First of all you need to declare the events you want to handle. As example we wa
 conn.subscribe(i3ipc::ET_WORKSPACE | i3ipc::ET_BINDING);
 ```
 
-Then we need to connect to the signal handlers:
+Then we need to set the event handlers:
 ```c++
 // Handler of WORKSPACE EVENT
-conn.signal_workspace_event.connect([](const i3ipc::workspace_event_t&  ev) {
+conn.on_workspace_event = [](const i3ipc::workspace_event_t&  ev) {
 	std::cout << "workspace_event: " << (char)ev.type << std::endl;
 	if (ev.current) {
 		std::cout << "\tSwitched to #" << ev.current->num << " - \"" << ev.current->name << '"' << std::endl;
 	}
-});
+};
 
 // Handler of binding event
-conn.signal_binding_event.connect([](const i3ipc::binding_t&  b) {
+conn.on_binding_event = [](const i3ipc::binding_t&  b) {
 	std::cout << "binding_event:" << std::endl
 		<< "\tcommand = \"" << b.command << '"' << std::endl
 		<< "\tinput_code = " << b.input_code << std::endl
@@ -79,11 +78,12 @@ conn.signal_binding_event.connect([](const i3ipc::binding_t&  b) {
 	for (const std::string& s : b.event_state_mask) {
 		std::cout << "\t\t\"" << s << '"' << std::endl;
 	}
-});
+};
 ```
 
 Then we starting the event-handling loop
 ```c++
+// handle_event() throws i3ipc::eof_error when i3 closes the connection
 while (true) {
 	conn.handle_event();
 }

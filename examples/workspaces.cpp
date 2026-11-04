@@ -17,9 +17,17 @@ void  dump_tree_container(const i3ipc::container_t&  c, std::string&  prefix) {
 	prefix.push_back('\t');
 	std::cout << prefix << "name = \"" << c.name << "\"" << std::endl;
 	std::cout << prefix << "type = \"" << c.type << "\"" << std::endl;
-	std::cout << prefix << "border = \"" << c.border_raw << "\"" << std::endl;
+	std::cout << prefix << "border = " << static_cast<char>(c.border);
+	if (!c.border_raw.empty()) {
+		std::cout << " (unknown: \"" << c.border_raw << "\")";
+	}
+	std::cout << std::endl;
 	std::cout << prefix << "current_border_width = " << c.current_border_width << std::endl;
-	std::cout << prefix << "layout = \"" << c.layout_raw << "\"" << std::endl;
+	std::cout << prefix << "layout = " << static_cast<char>(c.layout);
+	if (!c.layout_raw.empty()) {
+		std::cout << " (unknown: \"" << c.layout_raw << "\")";
+	}
+	std::cout << std::endl;
 	std::cout << prefix << "percent = " << c.percent << std::endl;
 	if (c.urgent) {
 		std::cout << prefix << "urgent" << std::endl;
@@ -29,6 +37,9 @@ void  dump_tree_container(const i3ipc::container_t&  c, std::string&  prefix) {
 	}
 	prefix.push_back('\t');
 	for (auto&  n : c.nodes) {
+		dump_tree_container(*n, prefix);
+	}
+	for (auto&  n : c.floating_nodes) {
 		dump_tree_container(*n, prefix);
 	}
 	prefix.pop_back();

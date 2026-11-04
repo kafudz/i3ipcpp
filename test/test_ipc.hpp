@@ -2,7 +2,7 @@
 
 #include <auss.hpp>
 
-#include "ipc-util.hpp"
+#include "i3ipc++/ipc-util.hpp"
 
 #include <cxxtest/TestSuite.h>
 

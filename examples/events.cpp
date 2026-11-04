@@ -15,17 +15,17 @@ int  main() {
 	conn.subscribe(i3ipc::ET_WORKSPACE | i3ipc::ET_WINDOW | i3ipc::ET_BINDING);
 
 	// Handler of workspace_event
-	conn.signal_workspace_event.connect([](const i3ipc::workspace_event_t&  ev) {
+	conn.on_workspace_event = [](const i3ipc::workspace_event_t&  ev) {
 		std::cout << "workspace_event: " << (char)ev.type << std::endl;
-	});
+	};
 
 	// Handler of window_event
-	conn.signal_window_event.connect([](const i3ipc::window_event_t&  ev) {
+	conn.on_window_event = [](const i3ipc::window_event_t&  ev) {
 		std::cout << "window_event: " << (char)ev.type << std::endl;
-	});
+	};
 
 	// Handler of binding event
-	conn.signal_binding_event.connect([](const i3ipc::binding_t&  b) {
+	conn.on_binding_event = [](const i3ipc::binding_t&  b) {
 		std::cout << "binding_event:" << std::endl
 			<< "\tcommand = \"" << b.command << '"' << std::endl
 			<< "\tinput_code = " << b.input_code << std::endl
@@ -35,11 +35,16 @@ int  main() {
 		for (const std::string& s : b.event_state_mask) {
 			std::cout << "\t\t\"" << s << '"' << std::endl;
 		}
-	});
+	};
 
-	// And starting an event-handling loop
-	while (true) {
-		conn.handle_event();
+	// And starting an event-handling loop. It ends with an exception when i3 closes the connection (e.g. on exit)
+	try {
+		while (true) {
+			conn.handle_event();
+		}
+	} catch (const i3ipc::ipc_error&  e) {
+		std::cerr << "Event loop finished: " << e.what() << std::endl;
+		return 1;
 	}
 
 	return 0;
