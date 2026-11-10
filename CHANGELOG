@@ -1,4 +1,4 @@
-0.4.1
+0.5.1
 	+ container_t::floating_nodes: floating containers are now parsed from the TREE reply
 	+ I3SOCK environment variable is honored by get_socketpath()
 	+ i3ipc::ipc_error and the other exceptions are available after including <i3ipc++/ipc.hpp>
@@ -14,6 +14,18 @@
 	* Fixed: unknown window events were passed to the handler with an uninitialized type
 	* Fixed: bar config colors with a malformed value threw an unrelated exception
 	* Fixed: subscribe() remembered refused subscriptions
+
+0.5
+	+ Added the "primary" field for output. [notfound404]
+	+ Added window_properties processing [BigRedEye]
+	+ Added support for undocumented WorkspaceEventTypes [Tobias Hänel]
+	+ Added payload to mode event [notfound4]
+	+ Added more control on event socket to user
+	+ Added example for i3 command w/ escaped substring. [Ken Gilmer]
+
+	~ Removed dynamic exception specifications [Morris Hafner]
+
+	* Fixies
 
 0.4
 	+ Added support of GET_BARCONFIG and barconfig_update event and examples for them
